@@ -41,7 +41,6 @@ trace = jacA.trace()
 # решаем систему
 staticSolution = solve([f1, f2], x, k2)
 
-
 ####################################################################################################################
 # однопараметрический анализ по параметру k1r
 print("Однопараметрический анализ по параметру k1r начат ...")
@@ -51,13 +50,11 @@ solNumber = 0  # 0, 1, второе решение не лежит в ОДЗ
 sol = [staticSolution[solNumber][0].subs({k1: k1Value, k3: k3Value, k3r: k3rValueList[1]}),
        staticSolution[solNumber][1].subs({k1: k1Value, k3: k3Value, k3r: k3rValueList[1]})]
 
-# jacACount1, jacACount2 - промежуточные подсчеты Якобиана в числовом виде
-jacACount1 = jacA.subs({k1: k1Value, k3: k3Value, k3r: k3rValueList[1]})
 meshSize = 100  # плотность сетки по переменной 'y'
 yGrid = np.linspace(0, 0.5, meshSize, dtype=float)
 
 # для всех значений параметра k1r
-for j in range(2):  # len(k1rValueList)):
+for j in range(len(k1rValueList)):
     # списки координат стационарных решений
     yCoord = []
     k2Coord = []
@@ -81,31 +78,37 @@ for j in range(2):  # len(k1rValueList)):
                 yCoord.append(yNew)
                 xCoord.append(xNew)
                 k2Coord.append(k2New)
-                # исследуем на биффуркации
-                jacACount2 = jacACount1.subs({y: yNew, x: xNew, k2: k2New, k1r: k1rValueList[j]})
-                jacACount2 = jacACount2.evalf(7)
-                # ищем собственные значения
-                eigenValues = jacACount2.eigenvals()
-                negativeValues = True
-                zeroValue = False
-                bothZeroValues = True
-                for key, val in eigenValues.items():
-                    # вещественная часть
-                    realPart = (complex(key)).real
-                    # оба отрицательные
-                    negativeValues = negativeValues and (realPart < 0)
-                    # есть хотя бы одно нулевое
-                    zeroValue = zeroValue or (math.fabs(realPart) < 0.0051)
-                    # оба нулевые
-                    bothZeroValues = bothZeroValues and (math.fabs(realPart) < 0.0051)
-                if bothZeroValues:
-                    # бифуркация Андронова-Хопфа
-                    horBif2List.append(k2New)
-                    verBif2List.append(yNew)
-                elif negativeValues and zeroValue:
-                    # седло-узловая бифуркация
-                    horBif1List.append(k2New)
-                    verBif1List.append(yNew)
+
+    # исследуем на биффуркации
+    detPrev = determinant.subs({y: yCoord[0], k1r: k1rValueList[j], x: xCoord[0], k2: k2Coord[0], k1: k1Value,
+                                k3: k3Value, k3r: k3rValueList[1]})
+    detPrev = detPrev.evalf(7)
+    tracePrev = trace.subs({y: yCoord[0], k1r: k1rValueList[j], x: xCoord[0], k2: k2Coord[0], k1: k1Value,
+                            k3: k3Value, k3r: k3rValueList[1]})
+    tracePrev = tracePrev.evalf(7)
+    for k in range(len(xCoord) - 1):
+        detNext = determinant.subs({y: yCoord[k + 1], k1r: k1rValueList[j], x: xCoord[k + 1],
+                                    k2: k2Coord[k + 1], k1: k1Value, k3: k3Value, k3r: k3rValueList[1]})
+        detNext = detNext.evalf(7)
+        # седло узловая бифуркация
+        if detPrev * detNext <= 0:
+            horBif1List.append(k2Coord[k + 1])
+            verBif1List.append(xCoord[k + 1])
+            horBif1List.append(k2Coord[k + 1])
+            verBif1List.append(yCoord[k + 1])
+        detPrev = detNext
+
+        traceNext = trace.subs({y: yCoord[k + 1], k1r: k1rValueList[j], x: xCoord[k + 1],
+                                k2: k2Coord[k + 1], k1: k1Value, k3: k3Value, k3r: k3rValueList[1]})
+        traceNext = traceNext.evalf(7)
+        # бифуркация Андронова-Хопфа
+        if tracePrev * traceNext <= 0:
+            horBif2List.append(k2Coord[k + 1])
+            verBif2List.append(xCoord[k + 1])
+            horBif2List.append(k2Coord[k + 1])
+            verBif2List.append(yCoord[k + 1])
+        tracePrev = traceNext
+
     # изображаем
     ax.clear()
     ax.plot(k2Coord, yCoord, label='y')
@@ -114,10 +117,9 @@ for j in range(2):  # len(k1rValueList)):
     ax.plot(horBif2List, verBif2List, 'ro', label='Андронова-Хопфа', color='green')
     ax.set(xlabel='k2', ylabel='x, y', title='k1r=' + str(k1rValueList[j]))
     ax.legend(loc='upper center', fontsize='x-large')
-    plt.show()
 
     # сохраняем
-    fig.savefig(folder_name + "/k1r=" + str(k1rValueList[j]) + ".png")
+    fig.savefig(folder_name + "/k1r_" + str(j + 1) + ".png")
 
 print("Однопараметрический анализ по параметру k1r окончен")
 
@@ -130,13 +132,11 @@ solNumber = 0  # 0, 1, второе решение не лежит в ОДЗ
 sol = [staticSolution[solNumber][0].subs({k1: k1Value, k3: k3Value, k1r: k1rValueList[2]}),
        staticSolution[solNumber][1].subs({k1: k1Value, k3: k3Value, k1r: k1rValueList[2]})]
 
-# jacACount1, jacACount2 - промежуточные подсчеты Якобиана в числовом виде
-jacACount1 = jacA.subs({k1: k1Value, k3: k3Value, k1r: k1rValueList[2]})
 meshSize = 100  # плотность сетки по переменной 'y'
 yGrid = np.linspace(0, 0.5, meshSize, dtype=float)
 
 # для всех значений параметра k3r
-for j in range(2):  # len(k3rValueList)):
+for j in range(len(k3rValueList)):
     # списки координат стационарных решений
     yCoord = []
     k2Coord = []
@@ -161,31 +161,37 @@ for j in range(2):  # len(k3rValueList)):
                 yCoord.append(yNew)
                 xCoord.append(xNew)
                 k2Coord.append(k2New)
-                # исследуем на биффуркации
-                jacACount2 = jacACount1.subs({y: yNew, x: xNew, k2: k2New, k3r: k3rValueList[j]})
-                jacACount2 = jacACount2.evalf(7)
-                # ищем собственные значения
-                eigenValues = jacACount2.eigenvals()
-                negativeValues = True
-                zeroValue = False
-                bothZeroValues = True
-                for key, val in eigenValues.items():
-                    # вещественная часть
-                    realPart = (complex(key)).real
-                    # оба отрицательные
-                    negativeValues = negativeValues and (realPart < 0)
-                    # есть хотя бы одно нулевое
-                    zeroValue = zeroValue or (math.fabs(realPart) < 0.00051)
-                    # оба нулевые
-                    bothZeroValues = bothZeroValues and (math.fabs(realPart) < 0.00051)
-                if bothZeroValues:
-                    # бифуркация Андронова-Хопфа
-                    horBif2List.append(k2New)
-                    verBif2List.append(yNew)
-                elif negativeValues and zeroValue:
-                    # седло-узловая бифуркация
-                    horBif1List.append(k2New)
-                    verBif1List.append(yNew)
+
+    # исследуем на биффуркации
+    detPrev = determinant.subs({y: yCoord[0], k1r: k1rValueList[2], x: xCoord[0], k2: k2Coord[0], k1: k1Value,
+                                k3: k3Value, k3r: k3rValueList[j]})
+    detPrev = detPrev.evalf(7)
+    tracePrev = trace.subs({y: yCoord[0], k1r: k1rValueList[2], x: xCoord[0], k2: k2Coord[0], k1: k1Value,
+                            k3: k3Value, k3r: k3rValueList[j]})
+    tracePrev = tracePrev.evalf(7)
+    for k in range(len(xCoord) - 1):
+        detNext = determinant.subs({y: yCoord[k + 1], k1r: k1rValueList[2], x: xCoord[k + 1],
+                                    k2: k2Coord[k + 1], k1: k1Value, k3: k3Value, k3r: k3rValueList[j]})
+        detNext = detNext.evalf(7)
+        # седло узловая бифуркация
+        if detPrev * detNext <= 0:
+            horBif1List.append(k2Coord[k + 1])
+            verBif1List.append(xCoord[k + 1])
+            horBif1List.append(k2Coord[k + 1])
+            verBif1List.append(yCoord[k + 1])
+        detPrev = detNext
+
+        traceNext = trace.subs({y: yCoord[k + 1], k1r: k1rValueList[2], x: xCoord[k + 1],
+                                k2: k2Coord[k + 1], k1: k1Value, k3: k3Value, k3r: k3rValueList[j]})
+        traceNext = traceNext.evalf(7)
+        # бифуркация Андронова-Хопфа
+        if tracePrev * traceNext <= 0:
+            horBif2List.append(k2Coord[k + 1])
+            verBif2List.append(xCoord[k + 1])
+            horBif2List.append(k2Coord[k + 1])
+            verBif2List.append(yCoord[k + 1])
+        tracePrev = traceNext
+
     # изображаем
     ax.clear()
     ax.plot(k2Coord, yCoord, label='y')
@@ -194,10 +200,9 @@ for j in range(2):  # len(k3rValueList)):
     ax.plot(horBif2List, verBif2List, 'ro', label='Андронова-Хопфа', color='green')
     ax.set(xlabel='k2', ylabel='x, y', title='k3r=' + str(k3rValueList[j]))
     ax.legend(loc='upper center', fontsize='x-large')
-    plt.show()
 
     # сохраняем
-    fig.savefig(folder_name + "/k3r=" + str(k3rValueList[j]) + ".png")
+    fig.savefig(folder_name + "/k3r_" + str(j+1) + ".png")
 
 print("Однопараметрический анализ по параметру k3r окончен")
 
@@ -206,34 +211,61 @@ print("Однопараметрический анализ по параметр
 # двухпараметрический анализ по параметрам k1, k2
 print("Двухпараметрический анализ по параметрам k1, k2 начат ...")
 
+# ищем линии кратности
 # подставляем известные параметры
 f1Count1 = f1.subs({k1r: k1rValueList[2], k3r: k3rValueList[1], k3: k3Value})
 f2Count1 = f2.subs({k1r: k1rValueList[2], k3r: k3rValueList[1], k3: k3Value})
 determinantCount1 = determinant.subs({k1r: k1rValueList[2], k3r: k3rValueList[1], k3: k3Value})
 # решаем расширенную систему
-complexSolution = solve([f1Count1, f2Count1, determinantCount1], y, k1, k2)
-sol = complexSolution[0]
+complexSolution1 = solve([f1Count1, f2Count1, determinantCount1], y, k1, k2)
+sol1 = complexSolution1[0]
+
+# ищем линии нейтральности
+# подставляем известные параметры
+f1Count2 = f1.subs({k1r: k1rValueList[2], k3r: k3rValueList[1], k3: k3Value})
+f2Count2 = f2.subs({k1r: k1rValueList[2], k3r: k3rValueList[1], k3: k3Value})
+traceCount2 = trace.subs({k1r: k1rValueList[2], k3r: k3rValueList[1], k3: k3Value})
+# решаем расширенную систему
+complexSolution2 = solve([f1Count2, f2Count2, traceCount2], y, k1, k2)
+sol2 = complexSolution2[0]
+
 # сетка по переменной 'x'
-xGrid = np.linspace(0, 0.9873, 100, dtype=float)
-k1Coord = []
-k2Coord = []
+xGrid = np.linspace(0, 0.9773, 100, dtype=float)
+k1CoordK = []
+k2CoordK = []
+k1CoordN = []
+k2CoordN = []
+
 for i in range(len(xGrid)):
+    # линии кратности
     # вычисляем значение k1
-    k1New = sol[1].subs(x, xGrid[i])
+    k1New = sol1[1].subs(x, xGrid[i])
     k1New = k1New.evalf(7)
     # вычисляем значение k2
-    k2New = sol[2].subs(x, xGrid[i])
+    k2New = sol1[2].subs(x, xGrid[i])
     k2New = k2New.evalf(7)
     # добавляем координаты в пределах [0, 10] x [0, 10]
     if (k1New >= 0) and (k1New <= 10) and (k2New >= 0) and (k2New <= 10):
-        k1Coord.append(k1New)
-        k2Coord.append(k2New)
+        k1CoordK.append(k1New)
+        k2CoordK.append(k2New)
+    # линии нейтральности
+
+    # вычисляем значение k1
+    k1New = sol2[1].subs(x, xGrid[i])
+    k1New = k1New.evalf(7)
+    # вычисляем значение k2
+    k2New = sol2[2].subs(x, xGrid[i])
+    k2New = k2New.evalf(7)
+    # добавляем координаты в пределах [0, 10] x [0, 10]
+    if (k1New >= 0) and (k1New <= 10) and (k2New >= 0) and (k2New <= 10):
+        k1CoordN.append(k1New)
+        k2CoordN.append(k2New)
 
 ax.clear()
-ax.plot(k2Coord, k1Coord)
+ax.plot(k2CoordK, k1CoordK, label='Линия кратности')
+ax.plot(k2CoordN, k1CoordN, label='Линия нейтральности', linestyle='--')
 ax.set(xlabel='k2', ylabel='k1', title='k1&k2')
-plt.show()
-
+ax.legend(loc='upper center', fontsize='x-large')
 fig.savefig(folder_name + "/k1&k2.png")
 
 print("Двухпараметрический анализ по параметрам k1, k2 окончен")
@@ -255,8 +287,8 @@ def model(f, t, p):
 
 
 # задаем значения параметров
-k1 = 0.5
-k2 = 2
+k1 = 0.2
+k2 = 6
 k1r = k1rValueList[2]
 k3 = k3Value
 k3r = k3rValueList[1]
@@ -264,14 +296,14 @@ k3r = k3rValueList[1]
 # задаем параметры решателя ОДУ
 abserr = 1.0e-3
 relerr = 1.0e-3
-stoptime = 50.0
-numpoints = 100
-t = np.linspace(0, 50, numpoints)
+stoptime = 200.0
+numpoints = 1000
+t = np.linspace(0, 10000, numpoints)
 p = [k1, k1r, k2, k3, k3r]
 
 # начальные приближения
-x0 = 0.940070371912747
-y0 = 0.510101010101010102
+x0 = 0.842081571373749
+y0 = 0.030303030303030304
 w0 = [x0, y0]
 
 # решаем систему
@@ -286,12 +318,13 @@ for val in odeSolution:
     yCoord.append(val[1])
 
 ax.clear()
-ax.plot(t, yCoord, label='y')
-ax.plot(t, xCoord, label='x')
-ax.set(xlabel='x', ylabel='y', title='Phase portrait')
-ax.legend(loc='upper center', fontsize='x-large')
+ax.plot(xCoord, yCoord)
+portraitNumber = 11
+title = str(portraitNumber) + ':_k1=' + str(k1) + '_k2=' + str(k2) + '_x0=' + str("{:.4f}".format(x0)) + \
+        '_y0=' + str("{:.4f}".format(y0))
+ax.set(xlabel='x', ylabel='y', title=title)
 plt.show()
 
-fig.savefig(folder_name + "/Phase_portrait.png")
+fig.savefig(folder_name + "/phase_portrait" + str(portraitNumber) + ".png")
 
 print("Построение фазовых портретов окончено")
